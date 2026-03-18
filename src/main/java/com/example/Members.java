@@ -20,4 +20,13 @@ public class Members {
         s+="]";    
         data=s;
     }
+
+    public ArrayList<ActorRef> getActorRefs() {
+        return this.references;
+    }
+
+    @Override
+    public String toString() {
+        return data;
+    }
 }
