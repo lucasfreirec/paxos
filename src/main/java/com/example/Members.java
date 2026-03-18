@@ -1,0 +1,23 @@
+package com.example;
+import akka.actor.ActorRef;
+import java.util.ArrayList;
+
+/**
+ * Class containing the processes' references
+ */
+public class Members {
+    public final ArrayList<ActorRef> references;
+    public final String data;
+    public final int num;
+
+    public Members(ArrayList<ActorRef> references) {
+        this.references = references;
+        this.num = references.size();
+        String s="[ ";
+        for (ActorRef a : references){
+            s+=a.path().name()+" ";
+        }
+        s+="]";    
+        data=s;
+    }
+}
