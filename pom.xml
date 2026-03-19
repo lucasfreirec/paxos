@@ -49,11 +49,7 @@
                 <version>3.0.0</version>
                 <configuration>
                     <executable>java</executable>
-                    <arguments>
-                        <argument>-classpath</argument>
-                        <classpath />
-                        <argument>com.example.Main</argument>
-                    </arguments>
+                    <commandlineArgs>-classpath %classpath com.example.Main ${exec.args}</commandlineArgs>
                 </configuration>
             </plugin>
         </plugins>

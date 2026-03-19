@@ -10,11 +10,7 @@ The Hello World example illustrates Akka basics. Within 10 minutes, you should b
 
 This template also provides build descriptors for maven and gradle. You can use any of the following commands to run the application:
 ```
-mvn compile exec:exec
-```
-or
-```
-./gradlew run
+mvn compile exec:exec -Dexec.args="{N} {F} {alpha} {tle}"
 ```
 
 ## Template license

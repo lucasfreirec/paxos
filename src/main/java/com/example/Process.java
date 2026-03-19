@@ -25,7 +25,7 @@ public class Process extends UntypedAbstractActor {
     private final int randomVal;
 
     // --- Failure Injection State ---
-    private final double alpha = 0.1; // 10% chance to crash on any event if fault-prone
+    private final double alpha; // Chance to crash on any event if fault-prone
     private boolean isSilent = false; // True if the process has crashed
     private boolean isFaultProne = false; // True if designated to potentially crash
     private boolean holdProposing = false; // True if instructed to stop proposing (Leader Election)
@@ -50,18 +50,19 @@ public class Process extends UntypedAbstractActor {
     private ActorRef monitor = null;
 
     // --- Constructor & Factory ---
-    public Process(String name, int i, int n) {
+    public Process(String name, int i, int n, double alpha) {
         this.name = name;
         this.i = i;
         this.n = n;
+        this.alpha = alpha;
         // Ballot initialized to i - n to ensure unique ballots per process
         this.ballot = i - n; 
         this.imposeballot = i - n;
         this.randomVal = new Random().nextInt(2); // Randomly pick 0 or 1
     }
 
-    public static Props createActor(int i, int n) {
-        return Props.create(Process.class, () -> new Process("P" + i, i, n));
+    public static Props createActor(int i, int n, double alpha) {
+        return Props.create(Process.class, () -> new Process("P" + i, i, n, alpha));
     }
 
     // --- Message Handling ---
@@ -109,7 +110,7 @@ public class Process extends UntypedAbstractActor {
             handleDecide((Messages.Decide) msg);
         } 
         else if (msg instanceof Messages.Abort) {
-            log.warning("{} received ABORT for ballot {}.", name, ((Messages.Abort) msg).ballot);
+            //log.warning("{} received ABORT for ballot {}.", name, ((Messages.Abort) msg).ballot);
             
             Messages.Abort abortMsg = (Messages.Abort) msg;
             if (abortMsg.ballot != ballot) {
@@ -135,7 +136,7 @@ public class Process extends UntypedAbstractActor {
 
     private void handleLaunch() {
         if (!holdProposing && !decided && !isSilent) {
-            log.info("{} launching PROPOSE operation with value: {}", name, randomVal);
+            //log.info("{} launching PROPOSE operation with value: {}", name, randomVal);
             propose();
         }
     }
