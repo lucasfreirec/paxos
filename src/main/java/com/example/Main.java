@@ -5,6 +5,8 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import java.util.*;
 import scala.concurrent.duration.Duration;
+
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 
@@ -17,6 +19,7 @@ public class Main {
     public static class Monitor extends akka.actor.UntypedAbstractActor {
         private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
         private boolean firstDecisionReceived = false;
+        public long consensusLatency = Long.MAX_VALUE; 
 
         public static akka.actor.Props props() {
             return akka.actor.Props.create(Monitor.class, Monitor::new);
@@ -27,15 +30,13 @@ public class Main {
             if (msg instanceof Messages.DecisionTime) {
                 Messages.DecisionTime dt = (Messages.DecisionTime) msg;
                 
-                // The first one to arrive is the shortest time!
                 if (!firstDecisionReceived) {
                     firstDecisionReceived = true;
-                    log.info("🏆 FASTEST CONSENSUS: {} decided in {} ms!", dt.processName, dt.latency);
+                    log.info("FASTEST CONSENSUS: {} decided in {} ms!", dt.processName, dt.latency);
+                    this.consensusLatency = dt.latency;
                 }
-                //  else {
-                //     // Optional: Log the runner-ups
-                //     log.info("   Runner up: {} decided in {} ms.", dt.processName, dt.latency);
-                // }
+            } else if (msg instanceof Messages.getConsensusLatency) {
+                log.info("CONSENSUS LATENCY: {} ms", this.consensusLatency);
             } else {
                 unhandled(msg);
             }
@@ -63,7 +64,6 @@ public class Main {
         for (ActorRef actor : references) {
             actor.tell(m, ActorRef.noSender());
         }
-        // references.get(0).tell(new Messages.Propose("100"), ActorRef.noSender());
 
         List<ActorRef> shuffledRefs = new ArrayList<>(references);
         Collections.shuffle(shuffledRefs);
@@ -106,5 +106,15 @@ public class Main {
             system.dispatcher()
         );
 
+        // akka system should terminate
+	    try {
+			Thread.sleep(10000);
+            monitor.tell(new Messages.getConsensusLatency(), ActorRef.noSender());
+            Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			system.terminate();
+		}
     }
 }

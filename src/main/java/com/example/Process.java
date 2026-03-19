@@ -11,14 +11,6 @@ import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
-import akka.actor.UntypedAbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
-
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 public class Process extends UntypedAbstractActor {
@@ -30,6 +22,7 @@ public class Process extends UntypedAbstractActor {
     private final String name;
     private final int i; // Process index (1 to N)
     private final int n; // Total processes (N)
+    private final int randomVal;
 
     // --- Failure Injection State ---
     private final double alpha = 0.1; // 10% chance to crash on any event if fault-prone
@@ -64,6 +57,7 @@ public class Process extends UntypedAbstractActor {
         // Ballot initialized to i - n to ensure unique ballots per process
         this.ballot = i - n; 
         this.imposeballot = i - n;
+        this.randomVal = new Random().nextInt(100); // Randomly pick 0 or 1
     }
 
     public static Props createActor(int i, int n) {
@@ -73,23 +67,20 @@ public class Process extends UntypedAbstractActor {
     // --- Message Handling ---
     @Override
     public void onReceive(Object msg) {
-        // 1. Log EVERY received message
-        // log.info("{} received message: {}", name, msg.getClass().getSimpleName());
-
-        // 2. Check if process is dead
+        // Check if process is dead
         if (isSilent) {
             log.debug("{} is silent and ignoring message.", name);
             return; 
         }
 
-        // 3. Fault-prone crash check on every event
+        // Fault-prone crash check on every event
         if (isFaultProne && Math.random() < alpha) {
             log.error("{} CRASHED while processing {}! Entering silent mode.", name, msg.getClass().getSimpleName());
             isSilent = true;
             return;
         }
 
-        // 4. Message Routing
+        // Message Routing
         if (msg instanceof Members) {
             this.members = (Members) msg;
             log.info("{}: updated members list (Size: {}).", name, members.num);
@@ -101,9 +92,6 @@ public class Process extends UntypedAbstractActor {
         else if (msg instanceof Messages.Hold) {
             this.holdProposing = true;
             log.info("{} received HOLD. Will stop proposing.", name);
-        } 
-        else if (msg instanceof Messages.Propose) {
-            handlePropose(((Messages.Propose) msg).v);
         } 
         else if (msg instanceof Messages.Read) {
             handleRead((Messages.Read) msg);
@@ -122,6 +110,13 @@ public class Process extends UntypedAbstractActor {
         } 
         else if (msg instanceof Messages.Abort) {
             log.warning("{} received ABORT for ballot {}.", name, ((Messages.Abort) msg).ballot);
+            
+            Messages.Abort abortMsg = (Messages.Abort) msg;
+            if (abortMsg.ballot != ballot) {
+                return; // ignore aborts from old attempts
+            }
+            // propose again
+            handleLaunch();
         } 
         else if (msg instanceof String) {
             log.info("{}: received string message '{}' from {}", name, msg, getSender());
@@ -139,16 +134,16 @@ public class Process extends UntypedAbstractActor {
     // --- Algorithm Implementations ---
 
     private void handleLaunch() {
-        if (!holdProposing && !decided) {
-            int randomVal = new Random().nextInt(2); // Randomly pick 0 or 1
+        if (!holdProposing && !decided && !isSilent) {
             log.info("{} launching PROPOSE operation with value: {}", name, randomVal);
-            handlePropose(randomVal);
+            propose();
         }
     }
 
-    private void handlePropose(Object v) {
-        proposal = v;
+    private void propose() {
+        proposal = this.randomVal;
         ballot += n;
+        ackCount = 0; 
         states.clear();
         broadcast(new Messages.Read(ballot));
     }
@@ -163,6 +158,11 @@ public class Process extends UntypedAbstractActor {
     }
 
     private void handleGather(Messages.Gather msg) {
+
+        // ignore stale/future messages
+        if (msg.ballot != ballot) {
+            return;
+        }
         states.put(getSender(), new StateEntry(msg.estBallot, msg.est));
 
         // Upon receiving a majority of responses
@@ -194,6 +194,11 @@ public class Process extends UntypedAbstractActor {
     }
 
     private void handleAck(Messages.Ack msg) {
+
+        if (msg.ballot != ballot) {
+            return;
+        }
+
         ackCount++;
         // Upon receiving a majority of ACKs
         if (ackCount > n / 2 && !decided) {

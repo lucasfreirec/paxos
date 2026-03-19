@@ -39,4 +39,6 @@ public class Messages {
             this.processName = processName;
         }
     }
+
+    public static class getConsensusLatency {}
 }
