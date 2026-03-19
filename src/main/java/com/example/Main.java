@@ -14,8 +14,7 @@ public class Main {
 
     public static int N = 10;
     public static int F = 3;
-
-    // Add this inside the Main class:
+    public static int tle = 500;
     public static class Monitor extends akka.actor.UntypedAbstractActor {
         private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
         private boolean firstDecisionReceived = false;
@@ -83,7 +82,7 @@ public class Main {
         }
 
         system.scheduler().scheduleOnce(
-            Duration.create(500, TimeUnit.MILLISECONDS),
+            Duration.create(tle, TimeUnit.MILLISECONDS),
             () -> {
                 log.info("--- Executing Leader Election ---");
                 
@@ -92,7 +91,9 @@ public class Main {
                 safeProcesses.removeAll(faultProneProcesses);
                 
                 if (!safeProcesses.isEmpty()) {
-                    ActorRef leader = safeProcesses.get(0);
+                    int randomProcess = new java.util.Random().nextInt(safeProcesses.size());
+                    ActorRef leader = safeProcesses.get(randomProcess);
+
                     log.info("Elected Leader: {}", leader.path().name());
                     
                     // Send 'Hold' to every process EXCEPT the elected leader

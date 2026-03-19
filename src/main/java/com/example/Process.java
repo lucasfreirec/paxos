@@ -57,7 +57,7 @@ public class Process extends UntypedAbstractActor {
         // Ballot initialized to i - n to ensure unique ballots per process
         this.ballot = i - n; 
         this.imposeballot = i - n;
-        this.randomVal = new Random().nextInt(100); // Randomly pick 0 or 1
+        this.randomVal = new Random().nextInt(2); // Randomly pick 0 or 1
     }
 
     public static Props createActor(int i, int n) {
